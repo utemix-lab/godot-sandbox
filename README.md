@@ -1,4 +1,4 @@
-# utemix-godot-sandbox
+# godot-sandbox
 
 Godot 4.2 sandbox для тестирования контрактов workspace в режиме **Visitor**.
 
@@ -144,6 +144,6 @@ func _effect_my_effect(effect: Dictionary) -> void:
 
 ## Связанные репозитории
 
-- [utemix-contracts](https://github.com/utemix-lab/utemix-contracts) — контракты и ассеты
+- [contracts](https://github.com/utemix-lab/contracts) — контракты и ассеты
 - [extended-mind](https://github.com/utemix-lab/extended-mind) — редактор Route Graph
 - [vovaipetrova-core](https://github.com/utemix-lab/vovaipetrova-core) — целевая витрина
