@@ -13,7 +13,7 @@ config_version=5
 config/name="utemix-godot-sandbox"
 config/description="Godot sandbox for testing workspace contracts (Visitor mode)"
 run/main_scene="res://scenes/Main.tscn"
-config/features=PackedStringArray("4.2", "Forward Plus")
+config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
@@ -22,6 +22,7 @@ AppState="*res://scripts/app_state.gd"
 ContractsLoader="*res://scripts/contracts_loader.gd"
 InteractionRuntime="*res://scripts/interaction_runtime.gd"
 MarkdownParser="*res://scripts/markdown_parser.gd"
+ExportManager="*res://scripts/export_manager.gd"
 
 [display]
 
@@ -41,7 +42,3 @@ ui_right={
 "events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":4194321,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
 ]
 }
-
-[rendering]
-
-renderer/rendering_method="forward_plus"
