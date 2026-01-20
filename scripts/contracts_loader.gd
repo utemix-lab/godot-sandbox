@@ -1,112 +1,133 @@
 extends Node
-## Loads contracts from workspace
+## Загрузчик контрактов и ассетов (Autoload: ContractsLoader)
 
-signal contracts_loaded
-signal load_error(message: String)
+# Путь к contracts (настраивается)
+var base_path: String = "../contracts/contracts/public"
 
-# Path to workspace (relative to Godot project)
-const DEFAULT_WORKSPACE_PATH = "../utemix-workspace/contracts/public"
-
-var workspace_path: String = DEFAULT_WORKSPACE_PATH
-var _local_paths_config: Dictionary = {}
-
+# Кэш загруженных ассетов
+var _asset_cache: Dictionary = {}
 
 func _ready() -> void:
-	_load_local_paths_config()
-	print("[ContractsLoader] Initialized, workspace: ", workspace_path)
+	_load_local_config()
+	print("[ContractsLoader] Base path: ", base_path)
 
-
-func _load_local_paths_config() -> void:
-	# Try to load local config (not committed)
+## Загрузить локальный конфиг путей
+func _load_local_config() -> void:
 	var config_path = "res://config/local_paths.json"
 	if FileAccess.file_exists(config_path):
 		var file = FileAccess.open(config_path, FileAccess.READ)
 		if file:
 			var json = JSON.new()
-			var error = json.parse(file.get_as_text())
-			if error == OK:
-				_local_paths_config = json.data
-				if _local_paths_config.has("workspace_path"):
-					workspace_path = _local_paths_config["workspace_path"]
-					print("[ContractsLoader] Using custom workspace path: ", workspace_path)
-			file.close()
+			if json.parse(file.get_as_text()) == OK:
+				var config = json.get_data()
+				if config.has("contracts_path"):
+					base_path = config.contracts_path
+					print("[ContractsLoader] Using custom path: ", base_path)
 
-
-func load_all_contracts() -> void:
-	print("[ContractsLoader] Loading all contracts...")
-	
-	# Layout
-	var layout = load_json("ui/layout/visitor.layout.json")
-	if layout:
-		AppState.layout = layout
-		print("[ContractsLoader] Layout loaded")
-	
-	# Interactions
-	var interactions = load_json("ui/interaction/visitor.interaction.json")
-	if interactions:
-		AppState.interactions = interactions
-		print("[ContractsLoader] Interactions loaded: ", interactions.get("rules", []).size(), " rules")
-	
-	# Bindings
-	var bindings = load_json("ui/bindings/visitor.bindings.json")
-	if bindings:
-		AppState.bindings = bindings
-		print("[ContractsLoader] Bindings loaded")
-	
-	# Demo route
-	var route = load_json("routes/demo/visitor.demo.route.json")
-	if route:
-		AppState.route_graph = route
-		print("[ContractsLoader] Route loaded: ", route.get("nodes", []).size(), " nodes")
-	
-	# Demo session
-	var session = load_json("sessions/demo/visitor.demo.session.json")
-	if session:
-		AppState.session = session
-		print("[ContractsLoader] Session loaded")
-	
-	contracts_loaded.emit()
-
-
+## Загрузить JSON файл
 func load_json(relative_path: String) -> Variant:
-	var full_path = workspace_path + "/" + relative_path
-	
-	# Try absolute path first (for external workspace)
-	if not full_path.begins_with("res://"):
-		# Convert to absolute if needed
-		if not full_path.begins_with("/") and not full_path.begins_with("C:"):
-			# Relative path from project
-			var project_path = ProjectSettings.globalize_path("res://")
-			full_path = project_path + full_path
-	
-	print("[ContractsLoader] Loading: ", full_path)
+	var full_path = base_path + "/" + relative_path
 	
 	if not FileAccess.file_exists(full_path):
-		print("[ContractsLoader] File not found: ", full_path)
-		load_error.emit("File not found: " + full_path)
+		push_error("[ContractsLoader] File not found: " + full_path)
 		return null
 	
 	var file = FileAccess.open(full_path, FileAccess.READ)
 	if not file:
-		var error_msg = "Cannot open file: " + full_path
-		print("[ContractsLoader] ", error_msg)
-		load_error.emit(error_msg)
+		push_error("[ContractsLoader] Cannot open: " + full_path)
 		return null
-	
-	var content = file.get_as_text()
-	file.close()
 	
 	var json = JSON.new()
-	var error = json.parse(content)
+	var error = json.parse(file.get_as_text())
 	if error != OK:
-		var error_msg = "JSON parse error at line %d: %s" % [json.get_error_line(), json.get_error_message()]
-		print("[ContractsLoader] ", error_msg)
-		load_error.emit(error_msg)
+		push_error("[ContractsLoader] JSON parse error in " + full_path + ": " + json.get_error_message())
 		return null
 	
-	return json.data
+	print("[ContractsLoader] Loaded: ", relative_path)
+	return json.get_data()
 
+## Загрузить layout контракт
+func load_layout(name: String = "visitor") -> Dictionary:
+	var data = load_json("ui/layout/" + name + ".layout.json")
+	return data if data else {}
 
-func get_asset_path(relative_path: String) -> String:
-	# Returns full path to asset
-	return workspace_path + "/assets/" + relative_path
+## Загрузить interaction контракт
+func load_interaction(name: String = "visitor") -> Array:
+	var data = load_json("ui/interaction/" + name + ".interaction.json")
+	return data if data is Array else []
+
+## Загрузить bindings контракт
+func load_bindings(name: String = "visitor") -> Dictionary:
+	var data = load_json("ui/bindings/" + name + ".bindings.json")
+	return data if data else {}
+
+## Загрузить route
+func load_route(category: String, name: String) -> Dictionary:
+	var data = load_json("routes/" + category + "/" + name + ".json")
+	return data if data else {}
+
+## Загрузить session
+func load_session(category: String, name: String) -> Dictionary:
+	var data = load_json("sessions/" + category + "/" + name + ".json")
+	return data if data else {}
+
+## Загрузить изображение (фон, иконка)
+func load_image(relative_path: String) -> Texture2D:
+	var full_path = base_path + "/" + relative_path
+	
+	# Проверить кэш
+	if _asset_cache.has(full_path):
+		return _asset_cache[full_path]
+	
+	if not FileAccess.file_exists(full_path):
+		push_warning("[ContractsLoader] Image not found: " + full_path)
+		return null
+	
+	var image = Image.load_from_file(full_path)
+	if image:
+		var texture = ImageTexture.create_from_image(image)
+		_asset_cache[full_path] = texture
+		print("[ContractsLoader] Loaded image: ", relative_path)
+		return texture
+	
+	return null
+
+## Загрузить текстовый файл (Markdown)
+func load_text(relative_path: String) -> String:
+	var full_path = base_path + "/" + relative_path
+	
+	if not FileAccess.file_exists(full_path):
+		push_warning("[ContractsLoader] Text not found: " + full_path)
+		return ""
+	
+	var file = FileAccess.open(full_path, FileAccess.READ)
+	if file:
+		return file.get_as_text()
+	return ""
+
+## Получить путь к ассету
+func get_asset_path(asset_type: String, asset_name: String) -> String:
+	match asset_type:
+		"background":
+			return "assets/ui/backgrounds/" + asset_name
+		"frame":
+			return "assets/ui/frames/" + asset_name
+		"icon":
+			return "assets/icons/" + asset_name
+		"avatar":
+			return "assets/avatars/" + asset_name
+		"logo":
+			return "assets/logos/" + asset_name
+		"image":
+			return "assets/images/" + asset_name
+		_:
+			return "assets/" + asset_name
+
+## Загрузить ассет по типу и имени
+func load_asset(asset_type: String, asset_name: String) -> Texture2D:
+	var path = get_asset_path(asset_type, asset_name)
+	return load_image(path)
+
+## Проверить существование файла
+func file_exists(relative_path: String) -> bool:
+	return FileAccess.file_exists(base_path + "/" + relative_path)

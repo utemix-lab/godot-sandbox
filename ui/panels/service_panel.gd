@@ -1,52 +1,74 @@
 extends PanelContainer
-## Service panel - displays actions and affordances
+## Панель Service — "Что можно сделать"
 
-@onready var content_label: RichTextLabel = $MarginContainer/VBox/Content
-@onready var actions_container: VBoxContainer = $MarginContainer/VBox/ActionsContainer/ActionButtons
+@onready var title_label: Label = $VBoxContainer/TitleLabel
+@onready var content_label: RichTextLabel = $VBoxContainer/ContentLabel
+@onready var actions_container: VBoxContainer = $VBoxContainer/ActionsContainer
 
+# Текущий контент
+var current_content: Dictionary = {}
 
 func _ready() -> void:
-	# Set panel style
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.071, 0.071, 0.086, 0.95)
-	style.border_width_bottom = 3
-	style.border_color = Color(0.133, 0.773, 0.369)  # Service accent color
-	add_theme_stylebox_override("panel", style)
+	if content_label:
+		content_label.bbcode_enabled = true
+		content_label.meta_clicked.connect(_on_meta_clicked)
 
-
-func update_content(data: Dictionary) -> void:
-	var text = data.get("text", "")
-	content_label.text = text if text else "No actions for this step."
+## Установить контент
+func set_content(service: Dictionary) -> void:
+	current_content = service
 	
-	# Clear existing buttons
+	if title_label:
+		title_label.text = "🎯 Service"
+	
+	if content_label:
+		var text = service.get("text", "")
+		content_label.text = MarkdownParser.to_bbcode(text)
+	
+	_render_actions(service.get("actions", []))
+
+## Отрендерить actions
+func _render_actions(actions: Array) -> void:
+	if not actions_container:
+		return
+	
 	for child in actions_container.get_children():
 		child.queue_free()
 	
-	# Create action buttons
-	var actions = data.get("actions", [])
+	if actions.is_empty():
+		return
+	
+	var actions_title = Label.new()
+	actions_title.text = "Действия:"
+	actions_title.add_theme_font_size_override("font_size", 12)
+	actions_title.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	actions_container.add_child(actions_title)
+	
 	for action in actions:
 		var button = Button.new()
-		button.text = action.get("label", "Action")
-		button.set_meta("action_id", action.get("id", ""))
-		button.set_meta("action_type", action.get("type", "custom"))
-		button.pressed.connect(_on_action_pressed.bind(action))
+		button.text = _get_action_icon(action.get("type", "")) + " " + action.get("label", action.get("id", ""))
+		button.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+		button.pressed.connect(_on_action_clicked.bind(action))
 		actions_container.add_child(button)
-	
-	# Hide actions container if no actions
-	$MarginContainer/VBox/ActionsContainer.visible = actions.size() > 0
 
+func _get_action_icon(action_type: String) -> String:
+	match action_type:
+		"navigate":
+			return "➡️"
+		"export":
+			return "📤"
+		"generate":
+			return "✨"
+		"compare":
+			return "🔍"
+		"restart":
+			return "🔄"
+		_:
+			return "▶️"
 
-func _on_action_pressed(action: Dictionary) -> void:
-	var action_id = action.get("id", "")
-	var action_type = action.get("type", "custom")
-	var action_label = action.get("label", "Unknown")
-	
-	print("[ServicePanel] Action pressed: ", action_label, " (", action_type, ")")
-	
-	InteractionRuntime.process_event("click", {
-		"type": "action-icon",
-		"action": action_id,
-		"actionType": action_type,
-		"label": action_label,
-		"panel": "service"
-	})
+func _on_action_clicked(action: Dictionary) -> void:
+	InteractionRuntime.handle_action_click(action)
+
+func _on_meta_clicked(meta: Variant) -> void:
+	var meta_str = str(meta)
+	if meta_str.begins_with("http"):
+		OS.shell_open(meta_str)

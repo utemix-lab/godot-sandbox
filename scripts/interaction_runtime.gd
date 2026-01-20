@@ -1,199 +1,119 @@
 extends Node
-## Processes interaction rules from contracts
+## Обработчик взаимодействий (Autoload: InteractionRuntime)
 
-signal effect_executed(effect_type: String, details: Dictionary)
+# Правила взаимодействия из контракта
+var rules: Array = []
 
-var _rules: Array = []
-
+# Сигналы
+signal effect_triggered(effect: Dictionary)
+signal action_executed(action_id: String, action_type: String)
 
 func _ready() -> void:
-	# Wait for contracts to load
-	ContractsLoader.contracts_loaded.connect(_on_contracts_loaded)
-	AppState.effect_triggered.connect(_execute_effect)
 	print("[InteractionRuntime] Initialized")
 
+## Загрузить правила
+func load_rules(interaction_rules: Array) -> void:
+	rules = interaction_rules
+	print("[InteractionRuntime] Loaded ", rules.size(), " rules")
 
-func _on_contracts_loaded() -> void:
-	_rules = AppState.interactions.get("rules", [])
-	print("[InteractionRuntime] Loaded ", _rules.size(), " rules")
-
-
-func process_event(event_type: String, target: Dictionary) -> void:
-	"""
-	Process an event and execute matching rules.
-	
-	event_type: "click", "hover", etc.
-	target: { "type": "tag", "label": "...", ... }
-	"""
+## Обработать событие
+func handle_event(event_type: String, target: Dictionary) -> void:
 	print("[InteractionRuntime] Event: ", event_type, " on ", target)
 	
-	for rule in _rules:
-		if _matches_rule(rule, event_type, target):
-			_execute_rule(rule, target)
+	for rule in rules:
+		if _matches_trigger(rule.get("trigger", {}), event_type, target):
+			_execute_effects(rule.get("effects", []))
 
-
-func _matches_rule(rule: Dictionary, event_type: String, target: Dictionary) -> bool:
-	var trigger = rule.get("trigger", {})
-	
-	# Check event type
-	if trigger.get("event") != event_type:
+## Проверить совпадение триггера
+func _matches_trigger(trigger: Dictionary, event_type: String, target: Dictionary) -> bool:
+	if trigger.get("event", "") != event_type:
 		return false
 	
-	# Check target type
 	var trigger_target = trigger.get("target", {})
+	if trigger_target.is_empty():
+		return true
+	
+	# Проверить тип цели
 	if trigger_target.has("type"):
-		if trigger_target["type"] != target.get("type"):
+		if target.get("type", "") != trigger_target.type:
 			return false
 	
-	# Check additional conditions
-	if trigger_target.has("expandable"):
-		if trigger_target["expandable"] != target.get("expandable", false):
+	# Проверить ID цели
+	if trigger_target.has("id"):
+		if target.get("id", "") != trigger_target.id:
 			return false
 	
 	return true
 
-
-func _execute_rule(rule: Dictionary, target: Dictionary) -> void:
-	print("[InteractionRuntime] Executing rule: ", rule.get("id", "unknown"))
-	
-	var effects = rule.get("effects", [])
+## Выполнить эффекты
+func _execute_effects(effects: Array) -> void:
 	for effect in effects:
-		var processed_effect = _interpolate_effect(effect, target)
-		_execute_effect(processed_effect)
+		_execute_effect(effect)
 
-
-func _interpolate_effect(effect: Dictionary, target: Dictionary) -> Dictionary:
-	"""Replace {{target.xxx}} placeholders with actual values."""
-	var result = effect.duplicate(true)
-	
-	for key in result.keys():
-		if result[key] is String:
-			result[key] = _interpolate_string(result[key], target)
-	
-	return result
-
-
-func _interpolate_string(template: String, target: Dictionary) -> String:
-	var result = template
-	
-	# Replace {{target.xxx}} patterns
-	var regex = RegEx.new()
-	regex.compile("\\{\\{target\\.([^}]+)\\}\\}")
-	
-	for match_result in regex.search_all(template):
-		var key = match_result.get_string(1)
-		var value = target.get(key, "")
-		result = result.replace(match_result.get_string(0), str(value))
-	
-	return result
-
-
+## Выполнить один эффект
 func _execute_effect(effect: Dictionary) -> void:
 	var effect_type = effect.get("type", "")
 	
 	match effect_type:
-		"highlight":
-			_effect_highlight(effect)
 		"log":
-			_effect_log(effect)
+			print("[Effect:log] ", effect.get("message", ""))
+		
+		"highlight":
+			var target = effect.get("target", "")
+			print("[Effect:highlight] ", target)
+			effect_triggered.emit(effect)
+		
 		"navigate":
-			_effect_navigate(effect)
-		"select":
-			_effect_select(effect)
-		"update":
-			_effect_update(effect)
-		"toggle-expand":
-			_effect_toggle_expand(effect)
-		"toggle-collapse":
-			_effect_toggle_collapse(effect)
-		"execute":
-			_effect_execute(effect)
-		"open-external":
-			_effect_open_external(effect)
-		"tooltip":
-			_effect_tooltip(effect)
-		"focus":
-			_effect_focus(effect)
+			var step_id = effect.get("step_id", "")
+			if step_id:
+				AppState.go_to_step_by_id(step_id)
+		
+		"show_tooltip":
+			print("[Effect:tooltip] ", effect.get("text", ""))
+			effect_triggered.emit(effect)
+		
+		"play_sound":
+			var sound_path = effect.get("path", "")
+			print("[Effect:sound] ", sound_path)
+			# TODO: Реализовать воспроизведение звука
+		
 		_:
-			print("[InteractionRuntime] Unknown effect type: ", effect_type)
+			print("[Effect:unknown] ", effect_type)
+			effect_triggered.emit(effect)
+
+## Обработать клик по ref
+func handle_ref_click(ref: Dictionary) -> void:
+	print("[InteractionRuntime] Ref clicked: ", ref)
+	handle_event("click", {"type": "ref", "id": ref.get("id", ""), "data": ref})
+
+## Обработать клик по action
+func handle_action_click(action: Dictionary) -> void:
+	var action_id = action.get("id", "")
+	var action_type = action.get("type", "")
 	
-	effect_executed.emit(effect_type, effect)
-
-
-func _effect_highlight(effect: Dictionary) -> void:
-	var target = effect.get("target", "")
-	var duration = effect.get("duration", 500)
-	print("[Effect:highlight] Target: ", target, ", Duration: ", duration, "ms")
-	# TODO: Implement actual highlight animation
-
-
-func _effect_log(effect: Dictionary) -> void:
-	var message = effect.get("message", "")
-	print("[Effect:log] ", message)
-
-
-func _effect_navigate(effect: Dictionary) -> void:
-	var to = effect.get("to", "")
-	print("[Effect:navigate] To: ", to)
+	print("[InteractionRuntime] Action: ", action_id, " (", action_type, ")")
 	
-	if to.begins_with("step:"):
-		var step_id = to.substr(5)
-		AppState.set_current_step(step_id)
-	elif to.begins_with("actor:"):
-		var actor_id = to.substr(6)
-		print("[Effect:navigate] Actor navigation not implemented: ", actor_id)
-
-
-func _effect_select(effect: Dictionary) -> void:
-	var target = effect.get("target", "")
-	print("[Effect:select] Target: ", target)
+	match action_type:
+		"navigate":
+			# Если есть target, перейти к нему
+			var target = action.get("target", "")
+			if target:
+				AppState.go_to_step_by_id(target)
+			else:
+				# Иначе просто следующий шаг
+				AppState.next_step()
+		
+		"export":
+			print("[Action:export] Exporting session...")
+			# TODO: Реализовать экспорт
+		
+		"restart":
+			var start_id = AppState.current_route.get("start_node_id", "")
+			if start_id:
+				AppState.go_to_step_by_id(start_id)
+		
+		_:
+			print("[Action:custom] ", action_type)
 	
-	if target.begins_with("step:"):
-		var step_id = target.substr(5)
-		AppState.set_current_step(step_id)
-
-
-func _effect_update(effect: Dictionary) -> void:
-	var panel = effect.get("panel", "")
-	var content = effect.get("content", "")
-	print("[Effect:update] Panel: ", panel, ", Content: ", content)
-	# Panels are updated via AppState signals
-
-
-func _effect_toggle_expand(effect: Dictionary) -> void:
-	var target = effect.get("target", "")
-	print("[Effect:toggle-expand] Target: ", target)
-	# TODO: Implement expand/collapse
-
-
-func _effect_toggle_collapse(effect: Dictionary) -> void:
-	var panel = effect.get("panel", "")
-	print("[Effect:toggle-collapse] Panel: ", panel)
-	
-	if AppState.panel_states.has(panel):
-		AppState.panel_states[panel]["collapsed"] = not AppState.panel_states[panel]["collapsed"]
-
-
-func _effect_execute(effect: Dictionary) -> void:
-	var action = effect.get("action", "")
-	print("[Effect:execute] Action: ", action)
-	# TODO: Implement action execution
-
-
-func _effect_open_external(effect: Dictionary) -> void:
-	var url = effect.get("url", "")
-	print("[Effect:open-external] URL: ", url)
-	OS.shell_open(url)
-
-
-func _effect_tooltip(effect: Dictionary) -> void:
-	var content = effect.get("content", "")
-	var position = effect.get("position", "above")
-	print("[Effect:tooltip] Content: ", content, ", Position: ", position)
-	# TODO: Implement tooltip display
-
-
-func _effect_focus(effect: Dictionary) -> void:
-	var target = effect.get("target", "")
-	print("[Effect:focus] Target: ", target)
-	# TODO: Implement focus (camera/highlight)
+	action_executed.emit(action_id, action_type)
+	handle_event("click", {"type": "action", "id": action_id, "action_type": action_type})

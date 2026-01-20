@@ -1,89 +1,102 @@
 extends Node
-## Global application state singleton
+## Глобальное состояние приложения (Autoload: AppState)
 
-signal step_changed(step_id: String)
-signal panel_updated(panel_name: String, content: Dictionary)
-signal effect_triggered(effect: Dictionary)
+# Текущий маршрут
+var current_route: Dictionary = {}
+var current_step_index: int = 0
+var current_step: Dictionary = {}
 
-# Current state
-var current_step_id: String = ""
-var visited_steps: Array[String] = []
-var selected_actors: Array[String] = []
-
-# Loaded data
-var route_graph: Dictionary = {}
-var session: Dictionary = {}
+# Контракты
 var layout: Dictionary = {}
-var interactions: Dictionary = {}
+var interaction_rules: Array = []
 var bindings: Dictionary = {}
 
-# Panel states
-var panel_states: Dictionary = {
-	"story": {"collapsed": false, "scroll": 0},
-	"system": {"collapsed": false, "scroll": 0},
-	"service": {"collapsed": false, "scroll": 0}
-}
+# Пути
+var contracts_path: String = ""
 
+# Сигналы
+signal step_changed(step: Dictionary, index: int)
+signal route_loaded(route: Dictionary)
+signal asset_loaded(asset_type: String, asset_path: String)
 
 func _ready() -> void:
 	print("[AppState] Initialized")
 
-
-func set_current_step(step_id: String) -> void:
-	if step_id != current_step_id:
-		current_step_id = step_id
-		if step_id not in visited_steps:
-			visited_steps.append(step_id)
-		step_changed.emit(step_id)
-		_update_panels_for_step(step_id)
-
-
-func get_step_data(step_id: String) -> Dictionary:
-	if route_graph.has("nodes"):
-		for node in route_graph["nodes"]:
-			if node.get("id") == step_id:
-				return node
-	return {}
-
-
-func _update_panels_for_step(step_id: String) -> void:
-	var step_data = get_step_data(step_id)
-	if step_data.is_empty():
-		return
+## Загрузить маршрут
+func load_route(route: Dictionary) -> void:
+	current_route = route
+	current_step_index = 0
 	
-	panel_updated.emit("story", step_data.get("story", {}))
-	panel_updated.emit("system", step_data.get("system", {}))
-	panel_updated.emit("service", step_data.get("service", {}))
+	# Найти стартовый шаг
+	var start_id = route.get("start_node_id", "")
+	for i in range(route.nodes.size()):
+		if route.nodes[i].id == start_id:
+			current_step_index = i
+			break
+	
+	current_step = route.nodes[current_step_index] if route.nodes.size() > 0 else {}
+	route_loaded.emit(route)
+	step_changed.emit(current_step, current_step_index)
+	print("[AppState] Route loaded: ", route.get("title", "Unknown"))
 
+## Перейти к следующему шагу
+func next_step() -> bool:
+	if current_route.is_empty():
+		return false
+	
+	# Найти NEXT edge от текущего шага
+	var current_id = current_step.get("id", "")
+	for edge in current_route.get("edges", []):
+		if edge.source == current_id and edge.type == "NEXT":
+			return go_to_step_by_id(edge.target)
+	
+	return false
 
-func trigger_effect(effect: Dictionary) -> void:
-	effect_triggered.emit(effect)
-	print("[AppState] Effect: ", effect)
+## Перейти к предыдущему шагу
+func prev_step() -> bool:
+	if current_route.is_empty():
+		return false
+	
+	# Найти NEXT edge, ведущий к текущему шагу
+	var current_id = current_step.get("id", "")
+	for edge in current_route.get("edges", []):
+		if edge.target == current_id and edge.type == "NEXT":
+			return go_to_step_by_id(edge.source)
+	
+	return false
 
+## Перейти к шагу по ID
+func go_to_step_by_id(step_id: String) -> bool:
+	for i in range(current_route.nodes.size()):
+		if current_route.nodes[i].id == step_id:
+			current_step_index = i
+			current_step = current_route.nodes[i]
+			step_changed.emit(current_step, current_step_index)
+			print("[AppState] Step changed to: ", current_step.get("label", step_id))
+			return true
+	return false
 
-func get_next_step_id() -> String:
-	if route_graph.has("edges"):
-		for edge in route_graph["edges"]:
-			if edge.get("source") == current_step_id and edge.get("type") == "NEXT":
-				return edge.get("target", "")
-	return ""
+## Получить информацию о маршруте
+func get_route_info() -> Dictionary:
+	return {
+		"title": current_route.get("title", ""),
+		"total_steps": current_route.get("nodes", []).size(),
+		"current_index": current_step_index,
+		"current_label": current_step.get("label", "")
+	}
 
+## Проверить, есть ли следующий шаг
+func has_next() -> bool:
+	var current_id = current_step.get("id", "")
+	for edge in current_route.get("edges", []):
+		if edge.source == current_id and edge.type == "NEXT":
+			return true
+	return false
 
-func get_prev_step_id() -> String:
-	if route_graph.has("edges"):
-		for edge in route_graph["edges"]:
-			if edge.get("target") == current_step_id and edge.get("type") == "NEXT":
-				return edge.get("source", "")
-	return ""
-
-
-func navigate_next() -> void:
-	var next_id = get_next_step_id()
-	if next_id:
-		set_current_step(next_id)
-
-
-func navigate_prev() -> void:
-	var prev_id = get_prev_step_id()
-	if prev_id:
-		set_current_step(prev_id)
+## Проверить, есть ли предыдущий шаг
+func has_prev() -> bool:
+	var current_id = current_step.get("id", "")
+	for edge in current_route.get("edges", []):
+		if edge.target == current_id and edge.type == "NEXT":
+			return true
+	return false

@@ -1,9 +1,9 @@
-[gd_scene load_steps=5 format=3 uid="uid://cg8x2q8j1dpx6"]
+[gd_scene load_steps=5 format=3 uid="uid://main_scene"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
-[ext_resource type="PackedScene" uid="uid://cstory1" path="res://ui/panels/StoryPanel.tscn" id="2_story"]
-[ext_resource type="PackedScene" uid="uid://csystem1" path="res://ui/panels/SystemPanel.tscn" id="3_system"]
-[ext_resource type="PackedScene" uid="uid://cservice1" path="res://ui/panels/ServicePanel.tscn" id="4_service"]
+[ext_resource type="PackedScene" path="res://ui/panels/StoryPanel.tscn" id="2_story"]
+[ext_resource type="PackedScene" path="res://ui/panels/SystemPanel.tscn" id="3_system"]
+[ext_resource type="PackedScene" path="res://ui/panels/ServicePanel.tscn" id="4_service"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -19,65 +19,95 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.039, 0.039, 0.047, 1)
+color = Color(0.1, 0.1, 0.12, 1)
 
-[node name="MainContainer" type="HBoxContainer" parent="."]
+[node name="TitleLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 10.0
+offset_bottom = 40.0
+grow_horizontal = 2
+text = "Route Graph Viewer"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_top = 50.0
+offset_bottom = -60.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="StoryPanel" parent="MainContainer" instance=ExtResource("2_story")]
-layout_mode = 2
+[node name="StoryPanel" parent="HBoxContainer" instance=ExtResource("2_story")]
 custom_minimum_size = Vector2(280, 0)
-
-[node name="CenterContainer" type="VBoxContainer" parent="MainContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="GraphPlaceholder" type="PanelContainer" parent="MainContainer/CenterContainer"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ColorRect" type="ColorRect" parent="MainContainer/CenterContainer/GraphPlaceholder"]
+[node name="GraphArea" type="ColorRect" parent="HBoxContainer"]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
-color = Color(0.118, 0.118, 0.137, 1)
+size_flags_horizontal = 3
+color = Color(0.15, 0.15, 0.18, 1)
 
-[node name="Label" type="Label" parent="MainContainer/CenterContainer/GraphPlaceholder"]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-text = "Route Graph Placeholder"
+[node name="GraphLabel" type="Label" parent="HBoxContainer/GraphArea"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -20.0
+offset_right = 100.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "[ Graph Visualization ]
+Coming soon..."
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="NavBar" type="HBoxContainer" parent="MainContainer/CenterContainer"]
+[node name="RightContainer" type="VBoxContainer" parent="HBoxContainer"]
+custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
-custom_minimum_size = Vector2(0, 48)
+size_flags_vertical = 3
+
+[node name="SystemPanel" parent="HBoxContainer/RightContainer" instance=ExtResource("3_system")]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ServicePanel" parent="HBoxContainer/RightContainer" instance=ExtResource("4_service")]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="NavContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -50.0
+grow_horizontal = 2
+grow_vertical = 0
 alignment = 1
 
-[node name="PrevButton" type="Button" parent="MainContainer/CenterContainer/NavBar"]
+[node name="PrevButton" type="Button" parent="NavContainer"]
+custom_minimum_size = Vector2(100, 40)
 layout_mode = 2
-text = "← Prev"
+text = "← Назад"
 
-[node name="StepLabel" type="Label" parent="MainContainer/CenterContainer/NavBar"]
-layout_mode = 2
+[node name="StepLabel" type="Label" parent="NavContainer"]
 custom_minimum_size = Vector2(200, 0)
-text = "Step: -"
+layout_mode = 2
+text = "Step 1/3"
 horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="NextButton" type="Button" parent="MainContainer/CenterContainer/NavBar"]
+[node name="NextButton" type="Button" parent="NavContainer"]
+custom_minimum_size = Vector2(100, 40)
 layout_mode = 2
-text = "Next →"
-
-[node name="RightContainer" type="VBoxContainer" parent="MainContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(320, 0)
-
-[node name="SystemPanel" parent="MainContainer/RightContainer" instance=ExtResource("3_system")]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="ServicePanel" parent="MainContainer/RightContainer" instance=ExtResource("4_service")]
-layout_mode = 2
-size_flags_vertical = 3
+text = "Далее →"

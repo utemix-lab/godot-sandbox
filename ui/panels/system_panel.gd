@@ -1,42 +1,77 @@
 extends PanelContainer
-## System panel - displays architecture/technical content
+## Панель System — "Как это устроено"
 
-@onready var content_label: RichTextLabel = $MarginContainer/VBox/Content
-@onready var refs_list: ItemList = $MarginContainer/VBox/RefsContainer/RefsList
+@onready var title_label: Label = $VBoxContainer/TitleLabel
+@onready var content_label: RichTextLabel = $VBoxContainer/ContentLabel
+@onready var refs_container: VBoxContainer = $VBoxContainer/RefsContainer
 
+# Текущий контент
+var current_content: Dictionary = {}
 
 func _ready() -> void:
-	refs_list.item_clicked.connect(_on_ref_clicked)
-	
-	# Set panel style
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.071, 0.071, 0.086, 0.95)
-	style.border_width_top = 3
-	style.border_color = Color(0.345, 0.651, 1.0)  # System accent color
-	add_theme_stylebox_override("panel", style)
+	if content_label:
+		content_label.bbcode_enabled = true
+		content_label.meta_clicked.connect(_on_meta_clicked)
 
-
-func update_content(data: Dictionary) -> void:
-	var text = data.get("text", "")
-	content_label.text = text if text else "No system info for this step."
+## Установить контент
+func set_content(system: Dictionary) -> void:
+	current_content = system
 	
-	# Update refs
-	refs_list.clear()
-	var refs = data.get("refs", [])
+	if title_label:
+		title_label.text = "⚙️ System"
+	
+	if content_label:
+		var text = system.get("text", "")
+		content_label.text = MarkdownParser.to_bbcode(text)
+	
+	_render_refs(system.get("refs", []))
+
+## Отрендерить refs
+func _render_refs(refs: Array) -> void:
+	if not refs_container:
+		return
+	
+	for child in refs_container.get_children():
+		child.queue_free()
+	
+	if refs.is_empty():
+		return
+	
+	var refs_title = Label.new()
+	refs_title.text = "Архитектура:"
+	refs_title.add_theme_font_size_override("font_size", 12)
+	refs_title.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	refs_container.add_child(refs_title)
+	
 	for ref in refs:
-		var label = ref.get("label", ref.get("entity_id", "Unknown"))
-		refs_list.add_item(label)
-	
-	# Hide refs container if no refs
-	$MarginContainer/VBox/RefsContainer.visible = refs.size() > 0
+		var button = Button.new()
+		button.text = _get_ref_icon(ref.get("type", "")) + " " + ref.get("label", ref.get("id", ""))
+		button.flat = true
+		button.add_theme_color_override("font_color", Color(0.3, 0.7, 0.4))
+		button.pressed.connect(_on_ref_clicked.bind(ref))
+		refs_container.add_child(button)
 
+func _get_ref_icon(ref_type: String) -> String:
+	match ref_type:
+		"repo":
+			return "📦"
+		"adr":
+			return "📋"
+		"spec":
+			return "📐"
+		"decision":
+			return "✅"
+		"pattern":
+			return "🔄"
+		_:
+			return "🔧"
 
-func _on_ref_clicked(index: int, _at_position: Vector2, _button_index: int) -> void:
-	var item_text = refs_list.get_item_text(index)
-	print("[SystemPanel] Ref clicked: ", item_text)
-	
-	InteractionRuntime.process_event("click", {
-		"type": "pointer-tag",
-		"label": item_text,
-		"panel": "system"
-	})
+func _on_ref_clicked(ref: Dictionary) -> void:
+	InteractionRuntime.handle_ref_click(ref)
+
+func _on_meta_clicked(meta: Variant) -> void:
+	var meta_str = str(meta)
+	if meta_str.begins_with("http"):
+		OS.shell_open(meta_str)
+	else:
+		InteractionRuntime.handle_event("click", {"type": "link", "id": meta_str})

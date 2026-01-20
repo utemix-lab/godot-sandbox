@@ -1,133 +1,111 @@
 extends Control
-## Main scene controller
+## Главный контроллер приложения
 
-@onready var step_label: Label = $MainContainer/CenterContainer/NavBar/StepLabel
-@onready var prev_button: Button = $MainContainer/CenterContainer/NavBar/PrevButton
-@onready var next_button: Button = $MainContainer/CenterContainer/NavBar/NextButton
-@onready var graph_label: Label = $MainContainer/CenterContainer/GraphPlaceholder/Label
+@onready var story_panel: PanelContainer = $HBoxContainer/StoryPanel
+@onready var graph_area: ColorRect = $HBoxContainer/GraphArea
+@onready var right_container: VBoxContainer = $HBoxContainer/RightContainer
+@onready var system_panel: PanelContainer = $HBoxContainer/RightContainer/SystemPanel
+@onready var service_panel: PanelContainer = $HBoxContainer/RightContainer/ServicePanel
 
-@onready var story_panel = $MainContainer/StoryPanel
-@onready var system_panel = $MainContainer/RightContainer/SystemPanel
-@onready var service_panel = $MainContainer/RightContainer/ServicePanel
+# Навигация
+@onready var nav_container: HBoxContainer = $NavContainer
+@onready var prev_button: Button = $NavContainer/PrevButton
+@onready var next_button: Button = $NavContainer/NextButton
+@onready var step_label: Label = $NavContainer/StepLabel
 
+# Заголовок
+@onready var title_label: Label = $TitleLabel
 
 func _ready() -> void:
-	print("[Main] Scene ready")
+	print("[Main] Starting...")
 	
-	# Connect buttons
-	prev_button.pressed.connect(_on_prev_pressed)
-	next_button.pressed.connect(_on_next_pressed)
-	
-	# Connect to AppState signals
+	# Подключить сигналы
 	AppState.step_changed.connect(_on_step_changed)
-	AppState.panel_updated.connect(_on_panel_updated)
+	AppState.route_loaded.connect(_on_route_loaded)
 	
-	# Connect to ContractsLoader
-	ContractsLoader.contracts_loaded.connect(_on_contracts_loaded)
-	ContractsLoader.load_error.connect(_on_load_error)
+	if prev_button:
+		prev_button.pressed.connect(_on_prev_pressed)
+	if next_button:
+		next_button.pressed.connect(_on_next_pressed)
 	
-	# Load contracts after a short delay (to ensure autoloads are ready)
-	await get_tree().create_timer(0.1).timeout
-	ContractsLoader.load_all_contracts()
+	# Загрузить контракты
+	_load_contracts()
 
-
-func _on_contracts_loaded() -> void:
-	print("[Main] Contracts loaded!")
+func _load_contracts() -> void:
+	# Загрузить layout
+	AppState.layout = ContractsLoader.load_layout("visitor")
+	print("[Main] Layout: ", AppState.layout)
 	
-	# Apply layout
-	_apply_layout()
+	# Загрузить interaction rules
+	AppState.interaction_rules = ContractsLoader.load_interaction("visitor")
+	InteractionRuntime.load_rules(AppState.interaction_rules)
 	
-	# Set initial step
-	var start_id = AppState.route_graph.get("start_node_id", "")
-	if start_id:
-		AppState.set_current_step(start_id)
+	# Загрузить bindings
+	AppState.bindings = ContractsLoader.load_bindings("visitor")
 	
-	# Update graph placeholder
-	var nodes_count = AppState.route_graph.get("nodes", []).size()
-	var edges_count = AppState.route_graph.get("edges", []).size()
-	graph_label.text = "Route: %s\n%d nodes, %d edges" % [
-		AppState.route_graph.get("title", "Unknown"),
-		nodes_count,
-		edges_count
-	]
+	# Загрузить демо-маршрут
+	var route = ContractsLoader.load_route("demo", "visitor.demo.route")
+	if not route.is_empty():
+		AppState.load_route(route)
+	else:
+		push_error("[Main] Failed to load demo route!")
 
+func _on_route_loaded(route: Dictionary) -> void:
+	if title_label:
+		title_label.text = route.get("title", "Route Graph")
+	_update_nav_buttons()
 
-func _on_load_error(message: String) -> void:
-	print("[Main] Load error: ", message)
-	graph_label.text = "Error loading contracts:\n" + message
-
-
-func _apply_layout() -> void:
-	var layout = AppState.layout
-	if layout.is_empty():
-		return
+func _on_step_changed(step: Dictionary, index: int) -> void:
+	print("[Main] Step changed to: ", step.get("label", "Unknown"))
 	
-	var desktop = layout.get("layout", {}).get("desktop", {})
-	var panels = desktop.get("panels", {})
+	# Обновить панели
+	if story_panel and story_panel.has_method("set_content"):
+		story_panel.set_content(step.get("story", {}))
 	
-	# Apply panel widths
-	if panels.has("story"):
-		var story_config = panels["story"]
-		var width = _parse_px(story_config.get("width", "280px"))
-		story_panel.custom_minimum_size.x = width
+	if system_panel and system_panel.has_method("set_content"):
+		system_panel.set_content(step.get("system", {}))
 	
-	if panels.has("system") or panels.has("service"):
-		var system_config = panels.get("system", {})
-		var width = _parse_px(system_config.get("width", "320px"))
-		$MainContainer/RightContainer.custom_minimum_size.x = width
+	if service_panel and service_panel.has_method("set_content"):
+		service_panel.set_content(step.get("service", {}))
 	
-	# Apply theme colors
-	var theme_config = layout.get("theme", {})
-	if theme_config.has("background"):
-		var bg_color = Color.from_string(theme_config["background"], Color.BLACK)
-		$Background.color = bg_color
-	
-	print("[Main] Layout applied")
+	# Обновить навигацию
+	_update_nav_buttons()
+	_update_step_label()
 
+func _update_nav_buttons() -> void:
+	if prev_button:
+		prev_button.disabled = not AppState.has_prev()
+	if next_button:
+		next_button.disabled = not AppState.has_next()
 
-func _parse_px(value: String) -> float:
-	if value.ends_with("px"):
-		return float(value.substr(0, value.length() - 2))
-	return float(value)
-
-
-func _on_step_changed(step_id: String) -> void:
-	step_label.text = "Step: " + step_id
-	
-	# Update navigation buttons
-	prev_button.disabled = AppState.get_prev_step_id().is_empty()
-	next_button.disabled = AppState.get_next_step_id().is_empty()
-	
-	print("[Main] Step changed to: ", step_id)
-
-
-func _on_panel_updated(panel_name: String, content: Dictionary) -> void:
-	match panel_name:
-		"story":
-			story_panel.update_content(content)
-		"system":
-			system_panel.update_content(content)
-		"service":
-			service_panel.update_content(content)
-
+func _update_step_label() -> void:
+	if step_label:
+		var info = AppState.get_route_info()
+		step_label.text = "%s (%d/%d)" % [
+			info.current_label,
+			info.current_index + 1,
+			info.total_steps
+		]
 
 func _on_prev_pressed() -> void:
-	AppState.navigate_prev()
-	InteractionRuntime.process_event("click", {"type": "navigation-point", "direction": "prev"})
-
+	AppState.prev_step()
 
 func _on_next_pressed() -> void:
-	AppState.navigate_next()
-	InteractionRuntime.process_event("click", {"type": "navigation-point", "direction": "next"})
-
+	AppState.next_step()
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_LEFT:
-				_on_prev_pressed()
+				AppState.prev_step()
 			KEY_RIGHT:
-				_on_next_pressed()
+				AppState.next_step()
 			KEY_ESCAPE:
-				# Deselect all
+				# Сбросить выделение
 				pass
+			KEY_R:
+				# Restart
+				if event.ctrl_pressed:
+					var start_id = AppState.current_route.get("start_node_id", "")
+					if start_id:
+						AppState.go_to_step_by_id(start_id)
