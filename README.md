@@ -144,6 +144,6 @@ func _effect_my_effect(effect: Dictionary) -> void:
 
 ## Связанные репозитории
 
-- [utemix-workspace](https://github.com/utemix-lab/utemix-workspace) — контракты и ассеты
+- [utemix-contracts](https://github.com/utemix-lab/utemix-contracts) — контракты и ассеты
 - [extended-mind](https://github.com/utemix-lab/extended-mind) — редактор Route Graph
 - [vovaipetrova-core](https://github.com/utemix-lab/vovaipetrova-core) — целевая витрина
