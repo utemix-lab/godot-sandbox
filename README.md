@@ -5,7 +5,7 @@ Godot 4.2 sandbox для тестирования контрактов workspace
 ## Требования
 
 - [Godot 4.2+](https://godotengine.org/download)
-- [utemix-workspace](https://github.com/utemix-lab/utemix-workspace) (соседняя папка)
+- [contracts](https://github.com/utemix-lab/contracts) (соседняя папка)
 
 ## Быстрый старт
 
@@ -13,16 +13,16 @@ Godot 4.2 sandbox для тестирования контрактов workspace
 
 ```bash
 cd ~/projects
-git clone https://github.com/utemix-lab/utemix-workspace.git
-git clone https://github.com/utemix-lab/utemix-godot-sandbox.git
+git clone https://github.com/utemix-lab/contracts.git
+git clone https://github.com/utemix-lab/godot-sandbox.git
 ```
 
 Структура должна быть:
 ```
 projects/
-├── utemix-workspace/
+├── contracts/
 │   └── contracts/public/...
-└── utemix-godot-sandbox/
+└── godot-sandbox/
     └── project.godot
 ```
 
@@ -44,7 +44,7 @@ projects/
 ## Структура
 
 ```
-utemix-godot-sandbox/
+godot-sandbox/
 ├── project.godot
 ├── scenes/
 │   └── Main.tscn           # Главная сцена
@@ -72,15 +72,15 @@ utemix-godot-sandbox/
 
 ## Подключение workspace
 
-По умолчанию sandbox ищет workspace по пути:
+По умолчанию sandbox ищет contracts по пути:
 ```
-../utemix-workspace/contracts/public/
+../contracts/contracts/public/
 ```
 
-Если workspace в другом месте, создайте `config/local_paths.json`:
+Если contracts в другом месте, создайте `config/local_paths.json`:
 ```json
 {
-  "workspace_path": "/absolute/path/to/utemix-workspace/contracts/public"
+  "contracts_path": "/absolute/path/to/contracts/contracts/public"
 }
 ```
 
