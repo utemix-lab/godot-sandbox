@@ -1,6 +1,19 @@
 # godot-sandbox
 
-Godot 4.2 sandbox для тестирования контрактов workspace в режиме **Visitor**.
+Godot 4.2 sandbox для тестирования контрактов в режиме **Visitor**.
+
+## Роль в экосистеме
+
+| | |
+|---|---|
+| **Слой** | 5. Рендер |
+| **Функция** | Визуализация и тестирование контрактов в Godot |
+| **Входы** | JSON из contracts/public/ |
+| **Выходы** | Интерактивный UI для пользователя |
+
+→ [Слои согласованности](https://github.com/utemix-lab/extended-mind/blob/main/docs/architecture/COHERENCE_LAYERS.md)
+
+---
 
 ## Требования
 
