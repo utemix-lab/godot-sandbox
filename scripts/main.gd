@@ -47,7 +47,14 @@ func _ready() -> void:
 	_update_ui()
 
 func _try_load_existing_route() -> void:
-	# Попробовать загрузить демо-маршрут
+	# Сначала попробовать Universe Graph (канонический)
+	var universe = ContractsLoader.load_universe_graph()
+	if universe.has("nodes") and universe.nodes.size() > 0 and graph_editor:
+		graph_editor.import_from_universe_graph(universe)
+		print("[Main] Loaded Universe Graph with ", universe.nodes.size(), " nodes")
+		return
+	
+	# Fallback: демо-маршрут
 	var route = ContractsLoader.load_route("demo", "visitor.demo.route")
 	if not route.is_empty() and graph_editor:
 		graph_editor.import_from_route_json(route)

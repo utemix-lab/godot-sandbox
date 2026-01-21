@@ -377,6 +377,47 @@ func export_to_file(file_path: String) -> bool:
 		push_error("[GraphEditor] Failed to export: ", file_path)
 		return false
 
+## Импорт Universe Graph (канонический граф из extended-mind)
+
+func import_from_universe_graph(universe: Dictionary) -> void:
+	nodes.clear()
+	edges.clear()
+	next_node_id = 1
+	
+	for node_data in universe.get("nodes", []):
+		var node = {
+			"id": node_data.id,
+			"label": node_data.get("label", node_data.id),
+			"position": node_data.get("position", { "x": 100, "y": 100 }),
+			"is_start": false,
+			"story": { "text": "", "refs": [] },
+			"system": { "text": "", "refs": [] },
+			"service": { "text": "", "actions": [] }
+		}
+		nodes.append(node)
+		
+		# Обновить next_node_id
+		var id_str = str(node_data.id)
+		if id_str.begins_with("node-"):
+			var id_num = id_str.replace("node-", "").to_int()
+			if id_num >= next_node_id:
+				next_node_id = id_num + 1
+	
+	# Первый узел — стартовый
+	if nodes.size() > 0:
+		nodes[0].is_start = true
+	
+	for edge_data in universe.get("edges", []):
+		edges.append({
+			"id": edge_data.get("id", "edge-" + str(edges.size())),
+			"source": edge_data.source,
+			"target": edge_data.target,
+			"type": "RELATED"  # Universe Graph edges are RELATED by default
+		})
+	
+	queue_redraw()
+	print("[GraphEditor] Imported Universe Graph with ", nodes.size(), " nodes")
+
 ## Импорт из JSON
 
 func import_from_route_json(route: Dictionary) -> void:

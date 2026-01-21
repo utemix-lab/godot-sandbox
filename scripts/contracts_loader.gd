@@ -66,6 +66,11 @@ func load_route(category: String, name: String) -> Dictionary:
 	var data = load_json("routes/" + category + "/" + name + ".json")
 	return data if data else {}
 
+## Загрузить Universe Graph (канонический граф из extended-mind)
+func load_universe_graph() -> Dictionary:
+	var data = load_json("graph/universe.json")
+	return data if data else {"nodes": [], "edges": []}
+
 ## Загрузить session
 func load_session(category: String, name: String) -> Dictionary:
 	var data = load_json("sessions/" + category + "/" + name + ".json")
