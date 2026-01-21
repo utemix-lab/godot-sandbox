@@ -1,7 +1,10 @@
-[gd_scene load_steps=3 format=3 uid="uid://hhxjfm4tg2h7"]
+[gd_scene load_steps=6 format=3 uid="uid://hhxjfm4tg2h7"]
 
 [ext_resource type="Script" uid="uid://dtwptlpnnp08m" path="res://scripts/main.gd" id="1_main"]
-[ext_resource type="Script" uid="uid://be2alse7snm0k" path="res://scripts/graph_editor.gd" id="2_graph_editor"]
+[ext_resource type="PackedScene" path="res://ui/panels/StoryPanel.tscn" id="2_story"]
+[ext_resource type="PackedScene" path="res://ui/panels/SystemPanel.tscn" id="3_system"]
+[ext_resource type="PackedScene" path="res://ui/panels/ServicePanel.tscn" id="4_service"]
+[ext_resource type="Script" uid="uid://be2alse7snm0k" path="res://scripts/graph_editor.gd" id="5_graph_editor"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -19,52 +22,111 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.05, 0.05, 0.07, 1)
-
-[node name="GraphEditor" type="Control" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = 40.0
-offset_bottom = -50.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("2_graph_editor")
+color = Color(0.07, 0.07, 0.09, 1)
 
 [node name="TitleLabel" type="Label" parent="."]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_top = 8.0
-offset_bottom = 36.0
+offset_top = 10.0
+offset_bottom = 40.0
 grow_horizontal = 2
-theme_override_colors/font_color = Color(0.5, 0.5, 0.55, 1)
-text = "Graph Editor"
+text = "Route Graph Editor"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="BottomBar" type="HBoxContainer" parent="."]
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 50.0
+offset_right = -16.0
+offset_bottom = -60.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="StoryPanel" parent="HBoxContainer" instance=ExtResource("2_story")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="GraphArea" type="Panel" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="GraphEditor" type="Control" parent="HBoxContainer/GraphArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("5_graph_editor")
+
+[node name="HintLabel" type="Label" parent="HBoxContainer/GraphArea"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -150.0
+offset_top = -30.0
+offset_right = 150.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "Right-click: menu | Drag: move | Ctrl+S: export"
+horizontal_alignment = 1
+
+[node name="RightContainer" type="VBoxContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="SystemPanel" parent="HBoxContainer/RightContainer" instance=ExtResource("3_system")]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ServicePanel" parent="HBoxContainer/RightContainer" instance=ExtResource("4_service")]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="NavContainer" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -45.0
+offset_top = -50.0
 grow_horizontal = 2
 grow_vertical = 0
 alignment = 1
 
-[node name="HintLabel" type="Label" parent="BottomBar"]
+[node name="PrevButton" type="Button" parent="NavContainer"]
+visible = false
+custom_minimum_size = Vector2(100, 40)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.4, 0.45, 1)
-text = "Right-click: add/connect nodes | Drag: move | Ctrl+S: export"
+text = "← Назад"
 
-[node name="Spacer" type="Control" parent="BottomBar"]
-custom_minimum_size = Vector2(40, 0)
+[node name="StepLabel" type="Label" parent="NavContainer"]
+custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
+text = "No selection"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="ExportButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(120, 36)
+[node name="NextButton" type="Button" parent="NavContainer"]
+visible = false
+custom_minimum_size = Vector2(100, 40)
 layout_mode = 2
-text = "Export"
+text = "Далее →"
+
+[node name="ExportButton" type="Button" parent="NavContainer"]
+custom_minimum_size = Vector2(140, 40)
+layout_mode = 2
+text = "Export (Ctrl+S)"

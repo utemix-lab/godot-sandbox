@@ -50,8 +50,8 @@ func _ready() -> void:
 	_add_initial_node()
 
 func _add_initial_node() -> void:
-	var center = size / 2 if size.x > 0 else Vector2(400, 300)
-	add_node(center, "Universe", true)
+	var center = size / 2 if size.x > 0 else Vector2(300, 200)
+	add_node(center, "Start", true)
 
 func _draw() -> void:
 	# Рисовать рёбра
