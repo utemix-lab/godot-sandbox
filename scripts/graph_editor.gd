@@ -378,6 +378,7 @@ func export_to_file(file_path: String) -> bool:
 		return false
 
 ## Импорт Universe Graph (канонический граф из extended-mind)
+## Universe Graph содержит story/system/service как простые строки
 
 func import_from_universe_graph(universe: Dictionary) -> void:
 	nodes.clear()
@@ -385,14 +386,19 @@ func import_from_universe_graph(universe: Dictionary) -> void:
 	next_node_id = 1
 	
 	for node_data in universe.get("nodes", []):
+		# Конвертировать строки 3S в формат с text/refs
+		var story_val = node_data.get("story", "")
+		var system_val = node_data.get("system", "")
+		var service_val = node_data.get("service", "")
+		
 		var node = {
 			"id": node_data.id,
 			"label": node_data.get("label", node_data.id),
 			"position": node_data.get("position", { "x": 100, "y": 100 }),
 			"is_start": false,
-			"story": { "text": "", "refs": [] },
-			"system": { "text": "", "refs": [] },
-			"service": { "text": "", "actions": [] }
+			"story": { "text": story_val if story_val is String else str(story_val), "refs": [] },
+			"system": { "text": system_val if system_val is String else str(system_val), "refs": [] },
+			"service": { "text": service_val if service_val is String else str(service_val), "actions": [] }
 		}
 		nodes.append(node)
 		
@@ -403,7 +409,7 @@ func import_from_universe_graph(universe: Dictionary) -> void:
 			if id_num >= next_node_id:
 				next_node_id = id_num + 1
 	
-	# Первый узел — стартовый
+	# Первый узел — стартовый (обычно "universe")
 	if nodes.size() > 0:
 		nodes[0].is_start = true
 	
@@ -412,11 +418,43 @@ func import_from_universe_graph(universe: Dictionary) -> void:
 			"id": edge_data.get("id", "edge-" + str(edges.size())),
 			"source": edge_data.source,
 			"target": edge_data.target,
-			"type": "RELATED"  # Universe Graph edges are RELATED by default
+			"type": "NEXT"  # Universe Graph edges are navigation paths
 		})
 	
 	queue_redraw()
+	
+	# Автоматически выбрать стартовый узел
+	if nodes.size() > 0:
+		_select_node(nodes[0].id)
+	
 	print("[GraphEditor] Imported Universe Graph with ", nodes.size(), " nodes")
+
+## Получить соседние узлы (для навигации)
+func get_neighbors(node_id: String) -> Array[Dictionary]:
+	var neighbor_ids: Array[String] = []
+	
+	for edge in edges:
+		if edge.source == node_id:
+			neighbor_ids.append(edge.target)
+		elif edge.target == node_id:
+			neighbor_ids.append(edge.source)
+	
+	var neighbors: Array[Dictionary] = []
+	for nid in neighbor_ids:
+		var node = _get_node_by_id(nid)
+		if node:
+			neighbors.append(node)
+	
+	return neighbors
+
+## Перейти к узлу по ID
+func navigate_to_node(node_id: String) -> void:
+	_select_node(node_id)
+	
+	# Центрировать вид (если реализовано)
+	var node = _get_node_by_id(node_id)
+	if node:
+		print("[GraphEditor] Navigated to: ", node.label)
 
 ## Импорт из JSON
 

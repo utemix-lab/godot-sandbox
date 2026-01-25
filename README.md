@@ -1,17 +1,26 @@
 # godot-sandbox
 
-Godot 4.2 sandbox для тестирования контрактов в режиме **Visitor**.
+**Инструмент режиссуры** — Godot 4.2 sandbox для UI-сценографии.
+
+---
 
 ## Роль в экосистеме
 
 | | |
 |---|---|
-| **Слой** | 5. Рендер |
-| **Функция** | Визуализация и тестирование контрактов в Godot |
-| **Входы** | JSON из contracts/public/ |
-| **Выходы** | Интерактивный UI для пользователя |
+| **Слой** | Режиссура (опциональный) |
+| **Функция** | Визуальное редактирование маршрутов, поиск UI-паттернов |
+| **Входы** | universe.json из contracts |
+| **Выходы** | Паттерны поведения UI → применяются в dream-graph |
 
-→ [Слои согласованности](https://github.com/utemix-lab/extended-mind/blob/main/docs/architecture/COHERENCE_LAYERS.md)
+```
+extended-mind (редактор) → universe.json → godot-sandbox → dream-graph
+                                              ↑
+                                    "Строительные леса"
+```
+
+> **Статус:** Строительные леса — убираются когда паттерны UI найдены.
+> dream-graph может работать напрямую с universe.json без Godot.
 
 ---
 
@@ -19,6 +28,8 @@ Godot 4.2 sandbox для тестирования контрактов в реж
 
 - [Godot 4.2+](https://godotengine.org/download)
 - [contracts](https://github.com/utemix-lab/contracts) (соседняя папка)
+
+---
 
 ## Быстрый старт
 
@@ -30,7 +41,7 @@ git clone https://github.com/utemix-lab/contracts.git
 git clone https://github.com/utemix-lab/godot-sandbox.git
 ```
 
-Структура должна быть:
+Структура:
 ```
 projects/
 ├── contracts/
@@ -42,17 +53,17 @@ projects/
 ### 2. Откройте проект в Godot
 
 1. Запустите Godot
-2. Import → выберите `utemix-godot-sandbox/project.godot`
+2. Import → выберите `godot-sandbox/project.godot`
 3. Нажмите **Play** (F5)
 
 ### 3. Что должно работать
 
-При запуске:
-1. ✅ Контракты загружаются из workspace
-2. ✅ Отображаются 3 панели: Story / System / Service
-3. ✅ Начальный шаг route graph показан
-4. ✅ Кнопки навигации (← / →) переключают шаги
-5. ✅ Клики по refs и actions логируются в консоль
+- ✅ Universe Graph загружается из contracts
+- ✅ Отображаются 3 панели: Story / System / Service
+- ✅ Навигация по узлам графа
+- ✅ Выбор узла обновляет панели
+
+---
 
 ## Структура
 
@@ -62,101 +73,50 @@ godot-sandbox/
 ├── scenes/
 │   └── Main.tscn           # Главная сцена
 ├── scripts/
-│   ├── app_state.gd        # Глобальное состояние (autoload)
-│   ├── contracts_loader.gd # Загрузка JSON контрактов (autoload)
-│   ├── interaction_runtime.gd # Обработка событий (autoload)
-│   └── main.gd             # Контроллер главной сцены
-├── ui/panels/
-│   ├── StoryPanel.tscn     # Панель Story
-│   ├── SystemPanel.tscn    # Панель System
-│   └── ServicePanel.tscn   # Панель Service
-└── config/
-    ├── local_paths.example.json  # Пример конфига
-    └── local_paths.json          # Ваш локальный конфиг (не коммитится)
+│   ├── app_state.gd        # Глобальное состояние
+│   ├── contracts_loader.gd # Загрузка JSON
+│   ├── graph_editor.gd     # 2D редактор графа
+│   └── main.gd             # Контроллер
+└── ui/panels/
+    ├── StoryPanel.tscn     # Панель Story
+    ├── SystemPanel.tscn    # Панель System
+    └── ServicePanel.tscn   # Панель Service
 ```
 
-## Autoloads
-
-| Singleton | Описание |
-|-----------|----------|
-| `AppState` | Хранит текущее состояние (step, panels, route graph) |
-| `ContractsLoader` | Загружает JSON из workspace |
-| `InteractionRuntime` | Обрабатывает события по правилам из interaction.json |
-
-## Подключение workspace
-
-По умолчанию sandbox ищет contracts по пути:
-```
-../contracts/contracts/public/
-```
-
-Если contracts в другом месте, создайте `config/local_paths.json`:
-```json
-{
-  "contracts_path": "/absolute/path/to/contracts/contracts/public"
-}
-```
-
-## Загружаемые контракты
-
-| Контракт | Описание |
-|----------|----------|
-| `ui/layout/visitor.layout.json` | Расположение панелей |
-| `ui/interaction/visitor.interaction.json` | Правила событий |
-| `ui/bindings/visitor.bindings.json` | Связи элемент → ассет |
-| `routes/demo/visitor.demo.route.json` | Демо-маршрут |
-| `sessions/demo/visitor.demo.session.json` | Состояние сессии |
+---
 
 ## Горячие клавиши
 
 | Клавиша | Действие |
 |---------|----------|
-| `←` | Предыдущий шаг |
-| `→` | Следующий шаг |
-| `Esc` | Сбросить выделение |
+| F5 | Запуск сцены |
+| ← | Предыдущий узел |
+| → | Следующий узел |
+| Esc | Сбросить выделение |
 
-## Разработка
+---
 
-### Добавление нового эффекта
+## Зачем нужен Godot?
 
-1. Добавьте правило в `visitor.interaction.json`:
-```json
-{
-  "id": "my-rule",
-  "trigger": { "event": "click", "target": { "type": "my-element" } },
-  "effects": [
-    { "type": "my-effect", "param": "value" }
-  ]
-}
-```
+1. **Визуальная навигация** — видеть граф целиком
+2. **Поиск паттернов** — какие UI-действия нужны
+3. **Быстрое прототипирование** — до внедрения в dream-graph
 
-2. Реализуйте обработчик в `interaction_runtime.gd`:
-```gdscript
-func _execute_effect(effect: Dictionary) -> void:
-    match effect.get("type"):
-        "my-effect":
-            _effect_my_effect(effect)
+Когда паттерны найдены и реализованы в dream-graph, Godot можно убрать из цепочки.
 
-func _effect_my_effect(effect: Dictionary) -> void:
-    var param = effect.get("param", "")
-    # Ваша логика
-```
-
-### Тестирование без workspace
-
-Создайте тестовые JSON файлы в `res://test_contracts/` и измените путь в `contracts_loader.gd`.
-
-## Roadmap
-
-- [ ] Визуализация графа (Cytoscape-like)
-- [ ] Highlight эффекты
-- [ ] Tooltips
-- [ ] Мобильный layout
-- [ ] Загрузка ассетов (иконки, фоны)
-- [ ] Звуковые эффекты
+---
 
 ## Связанные репозитории
 
-- [contracts](https://github.com/utemix-lab/contracts) — контракты и ассеты
-- [extended-mind](https://github.com/utemix-lab/extended-mind) — редактор Route Graph
-- [vovaipetrova-core](https://github.com/utemix-lab/vovaipetrova-core) — целевая витрина
+| Репозиторий | Роль | Статус |
+|-------------|------|--------|
+| **extended-mind** | Канон, документация | Активный |
+| **contracts** | Данные, ассеты | Активный |
+| **dream-graph** | Витрина — финальный рендер | Активный |
+| **utemix-lab** | Координация | Активный |
+
+---
+
+## Лицензия
+
+MIT © utemix-lab

@@ -64,9 +64,10 @@ func _on_graph_node_selected(node_data: Dictionary) -> void:
 	if node_data.is_empty():
 		_clear_panels()
 		_update_step_label_editor("")
+		_update_neighbor_buttons([])
 		return
 	
-	# Обновить панели с данными узла
+	# Обновить панели с данными узла (3S контент из Universe)
 	if story_panel and story_panel.has_method("set_content"):
 		story_panel.set_content(node_data.get("story", {}))
 	
@@ -77,6 +78,11 @@ func _on_graph_node_selected(node_data: Dictionary) -> void:
 		service_panel.set_content(node_data.get("service", {}))
 	
 	_update_step_label_editor(node_data.get("label", ""))
+	
+	# Показать кнопки соседних узлов для навигации
+	if graph_editor:
+		var neighbors = graph_editor.get_neighbors(node_data.get("id", ""))
+		_update_neighbor_buttons(neighbors)
 
 func _on_graph_changed() -> void:
 	# Граф изменился — можно автосохранять или помечать как "unsaved"
@@ -91,6 +97,37 @@ func _clear_panels() -> void:
 		system_panel.set_content({})
 	if service_panel and service_panel.has_method("set_content"):
 		service_panel.set_content({})
+
+## Обновить кнопки соседних узлов (для навигации по Universe Graph)
+func _update_neighbor_buttons(neighbors: Array) -> void:
+	# Очистить существующие кнопки соседей
+	for child in nav_container.get_children():
+		if child.is_in_group("neighbor_button"):
+			child.queue_free()
+	
+	if neighbors.is_empty():
+		return
+	
+	# Добавить разделитель и кнопки
+	var separator = VSeparator.new()
+	separator.add_to_group("neighbor_button")
+	nav_container.add_child(separator)
+	
+	var label = Label.new()
+	label.text = "→"
+	label.add_to_group("neighbor_button")
+	nav_container.add_child(label)
+	
+	for neighbor in neighbors:
+		var btn = Button.new()
+		btn.text = neighbor.get("label", neighbor.get("id", "?"))
+		btn.add_to_group("neighbor_button")
+		btn.pressed.connect(_on_neighbor_pressed.bind(neighbor.get("id", "")))
+		nav_container.add_child(btn)
+
+func _on_neighbor_pressed(node_id: String) -> void:
+	if graph_editor and not node_id.is_empty():
+		graph_editor.navigate_to_node(node_id)
 
 func _update_step_label_editor(label: String) -> void:
 	if step_label:
